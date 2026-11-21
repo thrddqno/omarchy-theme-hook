@@ -1,7 +1,8 @@
 #!/bin/bash
 # Omarchy invokes each hook through bash, even when thctl disables it.
 [[ -x "$0" ]] || exit 0
-exec python3 - "$@" <<'PY'
+run_chatgpt_sync() {
+python3 - "$@" <<'PY'
 import fcntl
 import json
 import os
@@ -98,7 +99,8 @@ def quit_app(pids):
                 'hl.dsp.send_shortcut({mods = "CTRL", key = "Q", '
                 f'window = "address:{address}"}})'
             )
-            subprocess.run(["hyprctl", "dispatch", shortcut], check=True, timeout=5)
+            subprocess.run(["hyprctl", "dispatch", shortcut], check=True, timeout=5,
+                           stdout=subprocess.DEVNULL)
             for _ in range(40):
                 if not app_pids():
                     return
@@ -127,35 +129,69 @@ def main():
     config = CONFIG.resolve(strict=True)
     palette = load_palette(PALETTE)
     source = config.read_text()
-    unchanged = f"[SUCCESS] ChatGPT Desktop {palette['mode']} theme already in sync"
+    unchanged = f"ChatGPT Desktop {palette['mode']} theme already in sync"
     if render(source, palette) == source:
         print(unchanged)
-        return
+        return 10
     with (config.parent / ".omarchy-chatgpt-theme.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         source = config.read_text()
         updated = render(source, palette)
         if updated == source:
             print(unchanged)
-            return
+            return 10
         pids = app_pids()
         if pids:
             quit_app(pids)
+        saved = False
         try:
             source = config.read_text()
             updated = render(source, palette)
             if updated != source:
                 atomic_write(config.with_name("config.toml.omarchy-theme.bak"), source)
                 atomic_write(config, updated)
-                print(f"[SUCCESS] ChatGPT Desktop {palette['mode']} theme updated")
+                saved = True
+
         finally:
             if pids:
-                subprocess.run(["uwsm", "app", "-t", "service", "--", "chatgpt"],
-                               check=True, timeout=15)
+                try:
+                    subprocess.run(["uwsm", "app", "-t", "service", "--", "chatgpt"],
+                                   check=True, timeout=15, stdout=subprocess.DEVNULL)
+                except (OSError, subprocess.SubprocessError) as error:
+                    if saved:
+                        raise ValueError(f"Theme settings saved, but ChatGPT could not relaunch: {error}") from error
+                    raise
+        if updated == source:
+            print(unchanged)
+            return 10
+        print(f"ChatGPT Desktop {palette['mode']} theme updated")
 
 
 try:
-    main()
+    sys.exit(main())
 except (ValueError, KeyError, OSError, subprocess.SubprocessError) as error:
-    sys.exit(f"ChatGPT theme hook: {error}")
+    if sys.argv[1:2] == ["--check"]:
+        sys.exit(str(error))
+    print(f"ChatGPT Desktop: {error}")
+    sys.exit(1)
 PY
+
+}
+
+if [[ ${1:-} == --check ]]; then
+    run_chatgpt_sync "$@"
+    exit $?
+fi
+
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" --logging-only || exit 1
+command -v chatgpt >/dev/null 2>&1 || skipped "ChatGPT Desktop"
+[[ -f "${CODEX_HOME:-$HOME/.codex}/config.toml" ]] || skipped "ChatGPT Desktop config"
+python3 -c 'import tomllib' 2>/dev/null || skipped "Python 3.11+ for ChatGPT Desktop"
+
+status=0
+message=$(run_chatgpt_sync "$@") || status=$?
+case "$status" in
+    0) success "$message" ;;
+    10) unchanged "$message" ;;
+    *) error "${message:-ChatGPT Desktop theme hook exited with status $status}" ;;
+esac

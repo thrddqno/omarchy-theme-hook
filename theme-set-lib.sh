@@ -12,6 +12,10 @@ success() {
   printf '\033[0;32m[SUCCESS]\033[0m %s\n' "$1"
 }
 
+unchanged() {
+  printf '\033[0;36m[UNCHANGED]\033[0m %s\n' "$1"
+}
+
 skipped() {
   printf '\033[0;34m[SKIPPED]\033[0m %s not found. Skipping.\n' "$1"
   exit 0
@@ -25,6 +29,8 @@ error() {
   printf '\033[0;31m[ERROR]\033[0m %s\n' "$1" >&2
   exit 1
 }
+
+[[ ${1:-} == --logging-only ]] && return 0
 
 [[ -f $COLORS_FILE ]] || error "colors.toml not found at $COLORS_FILE"
 

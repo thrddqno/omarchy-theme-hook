@@ -147,8 +147,8 @@ def main():
                 print(f"[SUCCESS] ChatGPT Desktop {palette['mode']} theme updated")
         finally:
             if pids:
-                subprocess.Popen(["uwsm", "app", "--", "chatgpt"], start_new_session=True,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.run(["uwsm", "app", "-t", "service", "--", "chatgpt"],
+                               check=True, timeout=15)
 
 
 try:

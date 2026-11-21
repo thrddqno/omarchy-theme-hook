@@ -22,6 +22,7 @@ hooks="$HOME/.config/omarchy/hooks"
 manifest="$hooks/.omarchy-theme-hook-files"
 install -Dm755 "$work/repo/thctl" "$HOME/.local/bin/thctl"
 install -Dm644 "$work/repo/theme-set-lib.sh" "$hooks/theme-set-lib.sh"
+install -Dm644 "$work/repo/theme-apps.py" "$hooks/theme-apps.py"
 mkdir -p "$hooks/theme-set.d"
 for file in "$work"/repo/theme-set.d/*.sh; do
     name=${file##*/}

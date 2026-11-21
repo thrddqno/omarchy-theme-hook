@@ -1,0 +1,225 @@
+diff --git i/src/core/omarchy_palette.h w/src/core/omarchy_palette.h
+new file mode 100644
+index 0000000..5d4b501
+--- /dev/null
++++ w/src/core/omarchy_palette.h
+@@ -0,0 +1,30 @@
++#pragma once
++
++#include <QColor>
++#include <QFile>
++#include <QJsonDocument>
++#include <QJsonObject>
++#include <QRegularExpression>
++#include <QStandardPaths>
++
++namespace whatsie::core {
++
++inline QJsonObject omarchyPalette()
++{
++    using namespace Qt::StringLiterals;
++    QFile file(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation)
++               + u"/whatsie/omarchy-palette.json"_s);
++    if (!file.open(QIODevice::ReadOnly) || file.size() > 4096)
++        return {};
++
++    const auto palette = QJsonDocument::fromJson(file.read(4097)).object();
++    static const QRegularExpression hex(u"^#[0-9a-fA-F]{6}$"_s);
++    for (const auto& key : {u"background"_s, u"foreground"_s, u"accent"_s,
++                            u"selection_background"_s, u"selection_foreground"_s}) {
++        if (!hex.match(palette.value(key).toString()).hasMatch())
++            return {};
++    }
++    return palette;
++}
++
++} // namespace whatsie::core
+diff --git i/src/main.cpp w/src/main.cpp
+index 2e3ffd9..7a226fc 100644
+--- i/src/main.cpp
++++ w/src/main.cpp
+@@ -31,8 +31,10 @@
+
+ #include <algorithm>
+ #include <atomic>
+ #include <cmath>
++#include <cstdio>
++#include <cstring>
+
+ namespace {
+
+ // Interface scale (FEATURES A7) must reach Qt through QT_SCALE_FACTOR, which is
+@@ -177,8 +179,13 @@ void relaunchForGpuFallback(whatsie::app::Application& app)
+ } // namespace
+
+ int main(int argc, char* argv[])
+ {
++    if (argc == 2 && std::strcmp(argv[1], "--omarchy-palette-version") == 0) {
++        std::puts("1");
++        return 0;
++    }
++
+     // Capture everything from the first line on; the file sink is attached
+     // once the application identity (and thus the log location) is known.
+     whatsie::core::LogSink::install();
+
+diff --git i/src/ui/settings_dialog.cpp w/src/ui/settings_dialog.cpp
+index 055beea..d025774 100644
+--- i/src/ui/settings_dialog.cpp
++++ w/src/ui/settings_dialog.cpp
+@@ -80,9 +80,8 @@ void SettingsDialog::setupUi()
+     m_tabs->addTab(wrapInScroll(buildAdvancedTab()), tr("Advanced"));
+
+     auto* header = new QWidget(this);
+     header->setObjectName(u"settingsHeader"_s);
+-    header->setStyleSheet(u"QWidget#settingsHeader { border-bottom: 2px solid #21c063; }"_s);
+     auto* headerRow = new QHBoxLayout(header);
+     headerRow->setContentsMargins(14, 12, 14, 12);
+     headerRow->setSpacing(10);
+     auto* logo = new QLabel(header);
+diff --git i/src/ui/theme_applier.cpp w/src/ui/theme_applier.cpp
+index 042d33b..37382d7 100644
+--- i/src/ui/theme_applier.cpp
++++ w/src/ui/theme_applier.cpp
+@@ -1,8 +1,9 @@
+ #include "ui/theme_applier.h"
+
+ #include "core/theme/theme_service.h"
+ #include "ui/logging.h"
++#include "core/omarchy_palette.h"
+ #include "ui/whatsapp_style.h"
+
+ #include <QApplication>
+ #include <QStyleFactory>
+@@ -27,9 +28,26 @@ ThemeApplier::ThemeApplier(core::ThemeService& theme, QObject* parent)
+ }
+
+ void ThemeApplier::apply()
+ {
+-    QApplication::setPalette(m_theme.palette());
++    auto palette = m_theme.palette();
++    const auto colors = core::omarchyPalette();
++    if (!colors.isEmpty()) {
++        const QColor background(colors.value(u"background"_s).toString());
++        const QColor foreground(colors.value(u"foreground"_s).toString());
++        for (const auto role : {QPalette::Window, QPalette::Base, QPalette::AlternateBase,
++                                QPalette::Button, QPalette::ToolTipBase}) {
++            palette.setColor(role, background);
++        }
++        for (const auto role : {QPalette::WindowText, QPalette::Text, QPalette::ButtonText,
++                                QPalette::ToolTipText}) {
++            palette.setColor(role, foreground);
++        }
++        palette.setColor(QPalette::Link, QColor(colors.value(u"accent"_s).toString()));
++        palette.setColor(QPalette::Highlight, QColor(colors.value(u"selection_background"_s).toString()));
++        palette.setColor(QPalette::HighlightedText, QColor(colors.value(u"selection_foreground"_s).toString()));
++    }
++    QApplication::setPalette(palette);
+     // WhatsApp Web's design language on top of the palette (green accent, rounded
+     // inputs, underlined tabs). Re-applied on every scheme change.
+     qApp->setStyleSheet(whatsappStyleSheet(m_theme.isDark()));
+     // WhatsApp Web follows prefers-color-scheme live (verified 2026-08-27 via
+diff --git i/src/ui/whatsapp_style.cpp w/src/ui/whatsapp_style.cpp
+index ba46e35..7428e9e 100644
+--- i/src/ui/whatsapp_style.cpp
++++ w/src/ui/whatsapp_style.cpp
+@@ -1,7 +1,8 @@
+ #include "ui/whatsapp_style.h"
+
+ #include <QHash>
++#include "core/omarchy_palette.h"
+
+ using namespace Qt::StringLiterals;
+
+ namespace whatsie::ui {
+@@ -37,8 +38,9 @@ QHash<QString, QString> tokens(bool dark)
+ // rest, so nothing here paints an opaque block over the web view or dialogs.
+ const char* kSheet = R"qss(
+ QDialog, QMainWindow { background: {{bg}}; }
+ QWidget { color: {{text}}; }
++QWidget#settingsHeader { border-bottom: 2px solid {{headerBorder}}; }
+ QLabel, QCheckBox, QRadioButton, QGroupBox, QTabWidget, QTabBar { background: transparent; }
+ QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; border: none; }
+ QToolTip {
+     background: {{elevated}}; color: {{text}};
+@@ -164,9 +166,24 @@ QListView::item:selected, QTreeView::item:selected, QListWidget::item:selected {
+
+ QString whatsappStyleSheet(bool dark)
+ {
+     QString sheet = QString::fromUtf8(kSheet);
+-    const QHash<QString, QString> t = tokens(dark);
++    auto t = tokens(dark);
++    t[u"headerBorder"_s] = u"#21c063"_s;
++    const auto palette = core::omarchyPalette();
++    if (!palette.isEmpty()) {
++        for (const auto& key : {u"bg"_s, u"panel"_s, u"elevated"_s, u"input"_s})
++            t[key] = palette.value(u"background"_s).toString();
++        for (const auto& key : {u"text"_s, u"muted"_s})
++            t[key] = palette.value(u"foreground"_s).toString();
++        for (const auto& key : {u"accent"_s, u"accentHover"_s, u"inputBorder"_s, u"border"_s})
++            t[key] = palette.value(u"accent"_s).toString();
++        for (const auto& key : {u"hover"_s, u"selected"_s})
++            t[key] = palette.value(u"selection_background"_s).toString();
++        t[u"headerBorder"_s] = palette.value(u"accent"_s).toString();
++        t[u"accentText"_s] = palette.value(u"selection_foreground"_s).toString();
++        sheet.replace(u"#ffffff"_s, u"{{accentText}}"_s);
++    }
+     for (auto it = t.constBegin(); it != t.constEnd(); ++it) {
+         sheet.replace(u"{{%1}}"_s.arg(it.key()), it.value());
+     }
+     return sheet;
+diff --git i/src/web/web_view.cpp w/src/web/web_view.cpp
+index 31b008c..e59159d 100644
+--- i/src/web/web_view.cpp
++++ w/src/web/web_view.cpp
+@@ -1,8 +1,9 @@
+ #include "web/web_view.h"
+
+ #include "core/settings/settings.h"
+ #include "core/theme/theme_service.h"
++#include "core/omarchy_palette.h"
+ #include "core/unread_badge.h"
+ #include "core/zoom_policy.h"
+ #include "platform/platform_info.h"
+ #include "web/bridge.h"
+@@ -438,8 +439,40 @@ void WebView::applyThemeLive()
+     const QString effective = m_theme.isDark() ? u"dark"_s : u"light"_s;
+     m_page->runJavaScript(
+         u"window.__whatsieSetTheme && window.__whatsieSetTheme('%1', '%2')"_s.arg(mode, effective),
+         QWebEngineScript::MainWorld);
++    if (m_page->url().scheme() == u"https" && m_page->url().host() == kWhatsAppUrl.host()) {
++        const auto palette = core::omarchyPalette();
++        const auto json = QString::fromUtf8(QJsonDocument(palette).toJson(QJsonDocument::Compact));
++        m_page->runJavaScript(uR"JS(
++            (() => {
++                if (location.origin !== 'https://web.whatsapp.com') return;
++                const colors = %1;
++                document.getElementById('whatsie-omarchy-palette')?.remove();
++                if (!colors.background) return;
++                const style = document.createElement('style');
++                style.id = 'whatsie-omarchy-palette';
++                style.textContent = `
++                    html body #app {
++                        --background-default: ${colors.background} !important;
++                        --background-default-hover: ${colors.selection_background} !important;
++                        --panel-background: ${colors.background} !important;
++                        --panel-header-background: ${colors.background} !important;
++                        --app-background: ${colors.background} !important;
++                        --conversation-panel-background: ${colors.background} !important;
++                        --primary: ${colors.foreground} !important;
++                        --secondary: ${colors.foreground} !important;
++                        --icon: ${colors.foreground} !important;
++                        --button-primary-background: ${colors.accent} !important;
++                        --outgoing-background: ${colors.selection_background} !important;
++                        background-color: ${colors.background} !important;
++                        color: ${colors.foreground} !important;
++                    }
++                `;
++                document.documentElement.append(style);
++            })()
++        )JS"_s.arg(json), QWebEngineScript::MainWorld);
++    }
+     qCDebug(lcWeb) << "theme pushed to page:" << mode << "effective:" << effective;
+ }
+
+ void WebView::handleProxyAuth(QAuthenticator* authenticator, const QString& proxyHost)

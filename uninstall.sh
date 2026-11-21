@@ -12,6 +12,13 @@ if [[ ! -f "$manifest" ]]; then
     echo "No Quattro theme hook installation found."
     exit 0
 fi
+if [[ -f "$hooks/theme-apps.py" ]]; then
+    source "$hooks/theme-set-lib.sh" --logging-only
+    for app in whatsie caprine betterbird stremio-enhanced; do
+        (run_app_theme "$app" --remove)
+    done
+    rm -f -- "$hooks/theme-apps.py"
+fi
 while IFS= read -r name; do
     if [[ "$name" =~ ^[0-9][0-9]-[a-zA-Z0-9_-]+\.sh$ ]]; then
         rm -f -- "$hooks/theme-set.d/$name"

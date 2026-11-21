@@ -101,3 +101,36 @@ https://github.com/imbypass/omarchy-waybar-bepi
 
 ## Contributing
 I actively encourage everyone to contribute a theme for their favorite application. If you have a theme for an application, an upgrade to an existing script, or even just feature ideas, please open a pull or a feature request on the GitHub repository. I try my best to review and merge them quickly. As a general rule of thumb, try to keep any templates submitted limited to a single script file.
+
+## Whatsie, Caprine, Betterbird, and Stremio Enhanced
+
+Use `thctl enable whatsie caprine betterbird stremio-enhanced` or disable each
+hook by name. Run `thctl run` to apply the current palette. These hooks require
+Python 3 and use the same resolved colors as the other Omarchy hooks.
+
+- **Caprine** adds a managed block to `custom.css`. On a palette change, the
+  hook attempts a normal quit and relaunch if it identifies one default instance.
+- **Betterbird** adds a stylesheet to the active Thunderbird profile. Restart
+  Betterbird to apply it. Review existing custom styles in `chrome/userChrome.css`
+  if you need to adjust the resulting look.
+- **Stremio Enhanced** adds **Omarchy** to the installed themes. Select it once
+  in Enhanced settings and reload when convenient after palette changes.
+- **Whatsie** requires the optional patch below. Stock builds skip the hook.
+
+### Build the optional Whatsie patch
+
+In a checkout of [Whatsie](https://github.com/keshavbhatt/whatsie) at
+commit `1086d7e`, apply the patch and build it with Qt 6.11 and Qt WebEngine.
+
+```sh
+git apply /path/to/omarchy-theme-hook/patches/whatsie-1086d7e.patch
+cmake -S . -B build -DWHATSIE_BUILD_TESTS=OFF -DWHATSIE_DICTIONARIES=
+cmake --build build --parallel
+build/src/whatsie --omarchy-palette-version
+```
+
+The last command prints `1`. To opt in, install this binary in a user-owned
+directory as `whatsie` and make it the first `whatsie` on the hook runner's
+PATH. Launch that binary in place of the stock application. The hook writes
+the palette to `${XDG_CONFIG_HOME:-$HOME/.config}/whatsie/omarchy-palette.json`.
+The theme pack installer does not replace the system package.

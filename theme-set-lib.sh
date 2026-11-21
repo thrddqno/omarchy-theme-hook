@@ -2,6 +2,9 @@
 
 # Omarchy 4 runs each theme-set hook in a fresh shell. Load the current
 # semantic palette and provide the compatibility helpers used by this pack.
+hooklette=${BASH_SOURCE[1]:-}
+[[ -z $hooklette || -x $hooklette ]] || exit 0
+
 THEME_DIR="$HOME/.local/state/omarchy/current/theme"
 COLORS_FILE="$THEME_DIR/colors.toml"
 
@@ -27,21 +30,7 @@ error() {
   exit 1
 }
 
-run_app_theme() {
-  local status=0 message
-  message=$(python3 "$HOME/.config/omarchy/hooks/theme-apps.py" "$@") || status=$?
-  case $status in
-    0) success "$message" ;;
-    10) unchanged "$message" ;;
-    11) printf '\033[0;34m[SKIPPED]\033[0m %s\n' "$message" ;;
-    *) error "${message:-$1 theme hook exited with status $status}" ;;
-  esac
-}
-
 [[ ${1:-} == --logging-only ]] && return 0
-
-hooklette=${BASH_SOURCE[1]:-}
-[[ -z $hooklette || -x $hooklette ]] || exit 0
 
 [[ -f $COLORS_FILE ]] || error "colors.toml not found at $COLORS_FILE"
 

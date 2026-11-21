@@ -127,13 +127,16 @@ def main():
     config = CONFIG.resolve(strict=True)
     palette = load_palette(PALETTE)
     source = config.read_text()
+    unchanged = f"[SUCCESS] ChatGPT Desktop {palette['mode']} theme already in sync"
     if render(source, palette) == source:
+        print(unchanged)
         return
     with (config.parent / ".omarchy-chatgpt-theme.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         source = config.read_text()
         updated = render(source, palette)
         if updated == source:
+            print(unchanged)
             return
         pids = app_pids()
         if pids:

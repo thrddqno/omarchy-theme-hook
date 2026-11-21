@@ -57,10 +57,10 @@ def render(source, palette):
     desktop = tomllib.loads(source).get("desktop", {})
     theme = "appearance" + mode.title() + "ChromeTheme"
     current = desktop.get(theme, {})
-    if desktop.get("appearanceTheme") == "system" and all(
+    if desktop.get("appearanceTheme") == mode and all(
             current.get(key) == value for key, value in colors.items()):
         return source
-    updated = patch(source, "desktop", {"appearanceTheme": "system"})
+    updated = patch(source, "desktop", {"appearanceTheme": mode})
     section = "desktop." + theme
     if not current:
         updated = patch(updated, section, dict(colors, contrast=60, opaqueWindows=False))
@@ -70,7 +70,7 @@ def render(source, palette):
     else:
         updated = patch(updated, section, colors)
     result = tomllib.loads(updated)["desktop"]
-    if result["appearanceTheme"] != "system" or any(
+    if result["appearanceTheme"] != mode or any(
             result[theme].get(key) != value for key, value in colors.items()):
         raise ValueError("Theme update did not validate")
     return updated

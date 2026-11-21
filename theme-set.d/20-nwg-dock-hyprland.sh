@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
 # This script respects user's existing nwg-dock-hyprland configuration.
 # It searches ~/.config/hypr/*.conf for exec/exec-once commands and preserves user flags.
 # Falls back to default configuration only if no user command is found.

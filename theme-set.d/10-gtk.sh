@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
 output_file="$HOME/.config/omarchy/current/theme/gtk.css"
 light_file="$HOME/.config/omarchy/current/theme/light.mode"
 gtk3_dir="$HOME/.config/gtk-3.0"

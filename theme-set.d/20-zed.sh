@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
 new_zed_file="$HOME/.config/omarchy/current/theme/zed.json"
 
 create_dynamic_theme() {

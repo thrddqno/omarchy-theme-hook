@@ -1,6 +1,10 @@
 #!/bin/bash
 
-output_file="$HOME/.config/omarchy/current/theme/steam.css"
+set -e
+
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
+output_file="$THEME_DIR/steam.css"
 
 if ! command -v steam >/dev/null 2>&1; then
     skipped "Steam"
@@ -19,7 +23,7 @@ cat > "$output_file" << EOF
 
 	/* destructive-action buttons */
     --adw-destructive-bg-rgb: ${rgb_normal_red} !important;
-    --adw-destructive-fg-rgb: ${rgb_primary_foreground} !important;
+    --adw-destructive-fg-rgb: ${rgb_primary_background} !important;
     --adw-destructive-rgb: ${rgb_normal_red} !important;
 
 	/* Levelbars, entries, labels and infobars. These don't need text colors */
@@ -67,9 +71,9 @@ cat > "$output_file" << EOF
     --adw-secondary-sidebar-shade-a: 0.36 !important;
 
 	/* Cards, boxed lists */
-    --adw-card-bg-rgb: 255, 255, 255 !important;
+    --adw-card-bg-rgb: ${rgb_primary_foreground} !important;
     --adw-card-bg-a: 0.08 !important;
-    --adw-card-fg-rgb: 255, 255, 255 !important;
+    --adw-card-fg-rgb: ${rgb_primary_foreground} !important;
     --adw-card-shade-rgb: 0, 0, 0 !important;
     --adw-card-shade-a: 0.36 !important;
 
@@ -93,21 +97,20 @@ cat > "$output_file" << EOF
 EOF
 
 adwaita_location=$HOME/.local/share/steam-adwaita
-font_path=$(fc-list $(omarchy-font-current) file | grep -ioP '.*\.ttf' | head -n 1)
 
 install_steam_theme() {
     if [[ ! -d "$adwaita_location" ]]; then
-        git clone https://github.com/tkashkin/Adwaita-for-Steam $adwaita_location > /dev/null 2>&1
+        git clone https://github.com/tkashkin/Adwaita-for-Steam "$adwaita_location" > /dev/null 2>&1
     fi
 }
 modify_steam_theme() {
     if [[ ! -d "$adwaita_location/adwaita/colorthemes/omarchy" ]]; then
-        mkdir $adwaita_location/adwaita/colorthemes/omarchy/
+        mkdir -p "$adwaita_location/adwaita/colorthemes/omarchy"
     fi
 }
 modify_install_script() {
     if ! grep -q "omarchy" "$adwaita_location/install.py"; then
-        sed -i.bak 's/\("cantarell"\)/\1, "omarchy"/' $adwaita_location/install.py
+        sed -i.bak 's/\("cantarell"\)/\1, "omarchy"/' "$adwaita_location/install.py"
     fi
 }
 
@@ -122,7 +125,7 @@ fi
 
 cp -p -f "$output_file" "$adwaita_location/adwaita/colorthemes/omarchy/omarchy.css"
 
-cd $adwaita_location && ./install.py \
+cd "$adwaita_location" && ./install.py \
     --color-theme omarchy \
     --extras library/hide_whats_new > /dev/null 2>&1
 

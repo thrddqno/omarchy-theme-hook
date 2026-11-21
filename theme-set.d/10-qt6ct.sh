@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
 new_qt_file="$HOME/.config/omarchy/current/theme/qt6ct.conf"
 
 if ! command -v qt6ct >/dev/null 2>&1; then

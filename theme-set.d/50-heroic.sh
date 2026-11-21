@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
 output_file="$HOME/.config/omarchy/current/theme/heroic.css"
 
 if ! command -v heroic >/dev/null 2>&1; then

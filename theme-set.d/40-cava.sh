@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
 if ! command -v cava >/dev/null 2>&1; then
     skipped "Cava"
 fi

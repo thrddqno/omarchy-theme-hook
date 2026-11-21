@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
 output_file="$HOME/.config/omarchy/current/theme/zen.css"
 
 # Detect available Zen launcher command across variants

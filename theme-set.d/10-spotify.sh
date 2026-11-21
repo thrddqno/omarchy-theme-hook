@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
+
 create_spicetify_styling() {
     mkdir -p "$HOME/.config/spicetify/Themes/omarchy"
 cat > "$HOME/.config/spicetify/Themes/omarchy/user.css" << EOF

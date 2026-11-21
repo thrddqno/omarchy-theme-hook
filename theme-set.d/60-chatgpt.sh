@@ -37,6 +37,14 @@ def patch(source, section, values):
     return source[:start] + body.rstrip("\n") + "\n\n" + source[end:]
 
 
+def load_palette(path):
+    palette = tomllib.loads(path.read_text())
+    palette["mode"] = subprocess.check_output(
+        ["omarchy-theme-color", "--file", str(path), "mode"], text=True, timeout=5
+    ).strip()
+    return palette
+
+
 def render(source, palette):
     mode = palette["mode"]
     if mode not in ("dark", "light"):
@@ -111,10 +119,10 @@ def atomic_write(path, contents):
 
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == "--check":
-        print(render(Path(sys.argv[2]).read_text(), tomllib.loads(Path(sys.argv[3]).read_text())), end="")
+        print(render(Path(sys.argv[2]).read_text(), load_palette(Path(sys.argv[3]))), end="")
         return
     config = CONFIG.resolve(strict=True)
-    palette = tomllib.loads(PALETTE.read_text())
+    palette = load_palette(PALETTE)
     source = config.read_text()
     if render(source, palette) == source:
         return
@@ -133,6 +141,7 @@ def main():
             if updated != source:
                 atomic_write(config.with_name("config.toml.omarchy-theme.bak"), source)
                 atomic_write(config, updated)
+                print(f"[SUCCESS] ChatGPT Desktop {palette['mode']} theme updated")
         finally:
             if pids:
                 subprocess.Popen(["uwsm", "app", "--", "chatgpt"], start_new_session=True,

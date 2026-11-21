@@ -12,36 +12,29 @@ if ! pacman -Qi "adw-gtk-theme" &>/dev/null; then
     fi
 fi
 
-# Remove any old temp files
-rm -rf /tmp/theme-hook/
+# Download the fork and install its Quattro hooks.
+work=$(mktemp -d)
+trap 'rm -rf -- "$work"' EXIT
+echo "Downloading theme hook..."
+git clone --depth 1 --branch main https://github.com/thrddqno/omarchy-theme-hook.git "$work/repo"
 
-# Clone the Omarchy theme hook repository
-echo -e "Downloading theme hook.."
-git clone https://github.com/imbypass/omarchy-theme-hook.git /tmp/theme-hook > /dev/null 2>&1
+hooks="$HOME/.config/omarchy/hooks"
+manifest="$hooks/.omarchy-theme-hook-files"
+install -Dm755 "$work/repo/thctl" "$HOME/.local/bin/thctl"
+install -Dm644 "$work/repo/theme-set-lib.sh" "$hooks/theme-set-lib.sh"
+mkdir -p "$hooks/theme-set.d"
+for file in "$work"/repo/theme-set.d/*.sh; do
+    name=${file##*/}
+    destination="$hooks/theme-set.d/$name"
+    mode=755
+    if [[ -f "$destination" && ! -x "$destination" ]]; then
+        mode=644
+    fi
+    install -m "$mode" "$file" "$destination"
+    printf '%s\n' "$name"
+done >> "$manifest"
+sort -u -o "$manifest" "$manifest"
 
-# Remove any old update alias
-rm -rf $HOME/.local/share/omarchy/bin/theme-hook-update > /dev/null 2>&1
-
-# Create a theme control alias
-mv -f /tmp/theme-hook/thctl $HOME/.local/share/omarchy/bin/thctl
-chmod +x $HOME/.local/share/omarchy/bin/thctl
-
-# Copy theme-set hook to Omarchy hooks directory
-mv -f /tmp/theme-hook/theme-set $HOME/.config/omarchy/hooks/
-
-# Create theme hook directory and copy scripts
-mkdir -p $HOME/.config/omarchy/hooks/theme-set.d/
-mv -f /tmp/theme-hook/theme-set.d/* $HOME/.config/omarchy/hooks/theme-set.d/
-
-# Remove any new temp files
-rm -rf /tmp/theme-hook
-
-# Update permissions
-chmod +x $HOME/.config/omarchy/hooks/theme-set
-chmod +x $HOME/.config/omarchy/hooks/theme-set.d/*
-
-# Update Omarchy theme
-echo "Running theme hook.."
+echo "Running theme hook..."
 omarchy-hook theme-set
-
 omarchy-show-done

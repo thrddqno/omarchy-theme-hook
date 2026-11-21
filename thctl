@@ -182,11 +182,11 @@ th_run() {
 }
 
 th_install() {
-    curl -fsSL https://imbypass.github.io/omarchy-theme-hook/install.sh | bash
+    curl -fsSL https://thrddqno.github.io/omarchy-theme-hook/install.sh | bash
 }
 
 th_uninstall() {
-    curl -fsSL https://imbypass.github.io/omarchy-theme-hook/uninstall.sh | bash
+    curl -fsSL https://thrddqno.github.io/omarchy-theme-hook/uninstall.sh | bash
 }
 
 th_help() {

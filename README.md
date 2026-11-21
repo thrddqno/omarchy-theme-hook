@@ -17,21 +17,27 @@
 ## Overview
 The Omarchy Theme Hook is a lightweight, clean solution to extending your Omarchy theme to other apps. It will check your Omarchy theme for the existence of any extended theme files and will install them automatically for you when a theme is applied. If a theme is applied that contains extended theme files, they will be copied to their proper folders. If the theme does *not* contain any extended theme files, a new set of each will be generated dynamically using the theme's Alacritty config and copied to their proper folders.
 
+Forked from [imbypass/omarchy-theme-hook](https://github.com/imbypass/omarchy-theme-hook) for Omarchy 4 (Quattro).
+
 ## Installing
 You can install the theme hook by running the following command:
 ```
-curl -fsSL https://imbypass.github.io/omarchy-theme-hook/install.sh | bash
+curl -fsSL https://thrddqno.github.io/omarchy-theme-hook/install.sh | bash
 ```
 
 ## Updating
 You can update the theme hook by running the following command, or by re-running the installation script:
 ```
-thctl update
+~/.local/bin/thctl update
 ```
 
 ## Theme Hook Controller (`thctl`)
 The Theme Hook Controller (`thctl`) is a command-line tool that allows you to manage your Theme Hook installation. It provides a simple interface for updating the hook as well as toggling hooklettes on and off.
 You can access it via the terminal by running `thctl`.
+
+## ChatGPT Desktop
+
+The ChatGPT hook requires Python 3.11+ and the `chatgpt` desktop package. It syncs the active palette to the matching light or dark appearance settings and attempts a normal restart if ChatGPT is open. Use `~/.local/bin/thctl disable chatgpt` to opt out or `~/.local/bin/thctl enable chatgpt` to turn it back on.
 
 ## Themed Apps
 - Cava
@@ -53,7 +59,7 @@ You can access it via the terminal by running `thctl`.
 ## Uninstalling
 You can remove the theme hook by running the following command:
 ```
-curl -fsSL https://imbypass.github.io/omarchy-theme-hook/uninstall.sh | bash
+curl -fsSL https://thrddqno.github.io/omarchy-theme-hook/uninstall.sh | bash
 ```
 
 ## FAQ

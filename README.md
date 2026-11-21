@@ -1,103 +1,84 @@
-
 <div align="center">
+  <img src="assets/logo.png" width="96" height="96" alt="Omarchy Theme Hook logo">
+  <h1>Omarchy Theme Hook</h1>
+  <p>App theme hooks for Omarchy 4 (Quattro).</p>
 
-![Preview](assets/preview.png)
+[![Omarchy 4 Quattro](https://img.shields.io/badge/Omarchy_4-Quattro-6d9eeb?style=flat-square)](https://github.com/basecamp/omarchy)
+[![21 theme hooks](https://img.shields.io/badge/theme_hooks-21-78bd7b?style=flat-square)](theme-set.d/)
+[![GitHub issues](https://img.shields.io/github/issues/thrddqno/omarchy-theme-hook?style=flat-square)](https://github.com/thrddqno/omarchy-theme-hook/issues)
+[![Last commit on main](https://img.shields.io/github/last-commit/thrddqno/omarchy-theme-hook/main?style=flat-square)](https://github.com/thrddqno/omarchy-theme-hook/commits/main/)
 
-# Omarchy Theme Hook
-   
-[![Themed Apps](https://img.shields.io/badge/themed_apps-15-blue?style=for-the-badge&labelColor=0C0D11&color=A5CAB8)](https://github.com/imbypass/omarchy-theme-hook/tree/main/theme-set.d)
-[![GitHub Issues](https://img.shields.io/github/issues/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=EB7A73)](https://github.com/imbypass/omarchy-theme-hook/issues)
-[![GitHub Last Commit](https://img.shields.io/github/last-commit/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=8ECD84)](https://github.com/imbypass/omarchy-theme-hook/commits/main/)
-[![GitHub Stars](https://img.shields.io/github/stars/imbypass/omarchy-theme-hook?style=for-the-badge&labelColor=0C0D11&color=EFBE71)](https://github.com/imbypass/omarchy-theme-hook/stargazers)
-
-**A lightweight, clean solution to extending your Omarchy theme to other apps.**
+[Install](#install) · [Manage hooks](#manage-hooks) · [Supported apps](#supported-apps) · [Troubleshooting](#app-setup-and-troubleshooting)
 
 </div>
 
-## Overview
-The Omarchy Theme Hook is a lightweight, clean solution to extending your Omarchy theme to other apps. It will check your Omarchy theme for the existence of any extended theme files and will install them automatically for you when a theme is applied. If a theme is applied that contains extended theme files, they will be copied to their proper folders. If the theme does *not* contain any extended theme files, a new set of each will be generated dynamically using the theme's Alacritty config and copied to their proper folders.
+Switch your Omarchy theme and the enabled hooks apply its colors to your apps. This fork uses Omarchy 4’s `theme-set.d` runner and resolves shared colors from the active theme’s `colors.toml`.
 
-Forked from [imbypass/omarchy-theme-hook](https://github.com/imbypass/omarchy-theme-hook) for Omarchy 4 (Quattro).
+![Discord, Steam, and Spotify using Everpuccin in the upstream showcase](assets/preview.png)
 
-## Installing
-You can install the theme hook by running the following command:
-```
+*Upstream showcase featuring Discord, Steam, and Spotify with Everpuccin.*
+
+## Install
+
+Use an Omarchy 4 installation with a theme that includes `colors.toml`.
+
+```bash
 curl -fsSL https://thrddqno.github.io/omarchy-theme-hook/install.sh | bash
 ```
 
-## Updating
-You can update the theme hook by running the following command, or by re-running the installation script:
-```
-~/.local/bin/thctl update
-```
+The installer adds the hooks to `~/.config/omarchy/hooks/theme-set.d/` and runs them once. It offers to install `adw-gtk-theme` for GTK apps if the package is missing.
 
-## Theme Hook Controller (`thctl`)
-The Theme Hook Controller (`thctl`) is a command-line tool that allows you to manage your Theme Hook installation. It provides a simple interface for updating the hook as well as toggling hooklettes on and off.
-You can access it via the terminal by running `thctl`.
+## Manage hooks
 
-## ChatGPT Desktop
+Use the fork’s copy of `thctl` at `~/.local/bin/thctl`.
 
-The ChatGPT hook requires Python 3.11+ and the `chatgpt` desktop package. It syncs the active palette to the matching light or dark appearance settings and attempts a normal restart if ChatGPT is open. Use `~/.local/bin/thctl disable chatgpt` to opt out or `~/.local/bin/thctl enable chatgpt` to turn it back on.
+| Command | What it does |
+| --- | --- |
+| `~/.local/bin/thctl list` | Show enabled and disabled hooks. |
+| `~/.local/bin/thctl open` | Open the installed hook directory. |
+| `~/.local/bin/thctl disable chatgpt` | Stop the ChatGPT hook from running. |
+| `~/.local/bin/thctl enable chatgpt` | Enable the ChatGPT hook again. |
+| `~/.local/bin/thctl run` | Run the enabled hooks with the current palette. |
+| `~/.local/bin/thctl update` | Update the pack and keep disabled hooks disabled. |
+| `~/.local/bin/thctl remove` | Uninstall the pack. |
 
-## Themed Apps
-- Cava
-- Cursor
-- Discord
-- Firefox
-- GTK (requires `adw-gtk-theme` from the AUR)
-- QT6
-- Spotify
-- Steam
-- Superfile
-- Vicinae
-- VS Code
-- Waybar
-- Windsurf
-- Zed
-- Zen Browser (experimental - requires manual enabling of legacy userchrome styling)
+Replace `chatgpt` with any hook name from `list`. Run `~/.local/bin/thctl run` after enabling a hook to apply the current palette right away.
 
-## Uninstalling
-You can remove the theme hook by running the following command:
-```
+## Uninstall
+
+Use `~/.local/bin/thctl remove` or run the command below. If an app still shows the last applied theme, restore its theme in the app’s settings.
+
+```bash
 curl -fsSL https://thrddqno.github.io/omarchy-theme-hook/uninstall.sh | bash
 ```
 
-## FAQ
+## Supported apps
 
-#### I installed the hook, but none of my apps are theming!
-1. The theme hook will generate and install themes, but cannot apply all of them.
-2. You may need to manually set the theme to "Omarchy" one time for each app that supports theming.
+Use the name in parentheses with `thctl enable` or `thctl disable`.
 
-#### My Firefox/Zen Browser isn't theming!
--  Firefox and Zen Browser may require manual enabling of legacy userchrome styling.
--  To do this, open the browser, go to `about:config`, search for `toolkit.legacyUserProfileCustomizations.stylesheets`, and set it to `true`.
+| Area | Apps and hook names |
+| --- | --- |
+| Browsers | Firefox (`firefox`), Qutebrowser (`qutebrowser`), Zen Browser (`zen`) |
+| Editors | Cursor (`cursor`), Typora (`typora`), VS Code (`vscode`), Windsurf (`windsurf`), Zed (`zed`) |
+| Desktop and terminal | Cava (`cava`), Fish (`fish`), fzf in Fish (`fzf`), GTK (`gtk`), nwg-dock-hyprland (`nwg-dock-hyprland`), Qt 6 (`qt6ct`), Superfile (`superfile`), Vicinae (`vicinae`) |
+| Chat and media | ChatGPT Desktop (`chatgpt`), Discord (`discord`), Heroic (`heroic`), Spotify (`spotify`), Steam (`steam`) |
 
-#### My Discord isn't theming!
-1. Make sure you are using a third-party Discord client, like Vesktop or Equibop.
-2. Apply your desired theme in Omarchy.
-3. Enable the Omarchy theme in Discord.
+[View the hook scripts](theme-set.d/).
 
-#### My Spotify isn't theming!
-1. Make sure that you *properly* installed Spicetify, including any permission edits that may need to be made for Linux systems.
-2. See a [[note for Linux users]](https://spicetify.app/docs/advanced-usage/installation#note-for-linux-users).
-3. Apply your desired theme in Omarchy.
+## App setup and troubleshooting
 
-#### My Spotify stopped theming!
-A Spotify client update may have caused Spicetify to stop working. You can fix this either by running `spicetify restore backup apply` or by reinstalling Spotify and Spicetify, and running `spicetify backup apply`.
+If an app’s colors don’t update, check that its hook is enabled and run `~/.local/bin/thctl run`. Check that app’s line in the output for a missing dependency or a restart message.
 
-#### I get a "colors.toml not found" error!
-Omarchy 3.3+ requires themes to include `colors.toml`. Update your theme to a version compatible with Omarchy 3.3+, or add a valid `colors.toml` file to the theme directory.
+- **ChatGPT Desktop** requires Python 3.11 or newer and the `chatgpt` desktop command. The hook updates the matching light or dark appearance and attempts a normal restart if the app is open.
+- **Discord** requires a client with custom theme support, such as Vesktop or Equibop. Run the hooks, then enable the **Match System** theme in the client.
+- **Firefox and Zen** may need legacy stylesheets enabled. Open `about:config`, set `toolkit.legacyUserProfileCustomizations.stylesheets` to `true`, and restart the browser.
+- **Spotify** requires Spicetify. If Spotify updates and the theme stops applying, run `spicetify restore backup apply`. [Spicetify setup for Linux](https://spicetify.app/docs/advanced-usage/installation#note-for-linux-users)
+- **Missing `colors.toml`** means the active theme needs a compatible palette file. Update the theme or add a valid `colors.toml`, then reapply it.
 
-#### What if I encounter issues?
-If you encounter any issues, please open an issue on the GitHub repository.
+## Report an issue or contribute
 
-#### What theme is shown in the showcase?
-Everpuccin.
-https://github.com/imbypass/omarchy-everpuccin-theme
+Include your Omarchy version, the app, and the relevant output from `~/.local/bin/thctl run` when reporting a problem. For a new app hook, use the existing scripts as examples and check the result with a light and a dark theme. [Open an issue](https://github.com/thrddqno/omarchy-theme-hook/issues).
 
-#### Will you share your waybar configuration?
-It's on GitHub.
-https://github.com/imbypass/omarchy-waybar-bepi
+## Credits
 
-## Contributing
-I actively encourage everyone to contribute a theme for their favorite application. If you have a theme for an application, an upgrade to an existing script, or even just feature ideas, please open a pull or a feature request on the GitHub repository. I try my best to review and merge them quickly. As a general rule of thumb, try to keep any templates submitted limited to a single script file.
+This fork builds on imbypass’s Omarchy Theme Hook and reuses its logo and showcase. [Upstream project](https://github.com/imbypass/omarchy-theme-hook) · [Everpuccin theme](https://github.com/imbypass/omarchy-everpuccin-theme) · [Waybar configuration](https://github.com/imbypass/omarchy-waybar-bepi)

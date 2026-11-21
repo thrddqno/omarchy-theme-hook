@@ -1,7 +1,7 @@
 #!/bin/bash
 
 source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
-output_file="$HOME/.config/omarchy/current/theme/vscode_colors.json"
+output_file="$THEME_DIR/vscode_colors.json"
 
 if ! command -v code >/dev/null 2>&1; then
     skipped "VS Code"
@@ -17,7 +17,7 @@ if [[ ! -f "$output_file" ]]; then
 {
     "\$schema": "vscode://schemas/color-theme",
     "name": "Omarchy",
-    "type": "",
+    "type": "${theme_mode}",
     "colors": {
     // Base colors
     "foreground":"#${normal_white}", //5
@@ -1252,43 +1252,43 @@ fi
 
 extension_name="tintedtheming.base16-tinted-themes"
 
-install_extension() {
-    is_extension_installed=$(code --list-extensions | grep "${extension_name}")
-    if [[ -z "$is_extension_installed" ]]; then
-        code --install-extension $extension_name
-        sleep 3
-    fi
-}
-
-install_path=""
-vscode_paths=(
-    "$HOME/.vscode-oss/extensions/"
-    "$HOME/.vscode/extensions/"
-)
 find_extension_dir() {
-    for path in "${vscode_paths[@]}"; do
-        if [[ -d "$path" ]]; then
-            install_path=$(find "$path" -maxdepth 1 -type d -name "${extension_name}-*" | head -n1)
+    local candidate root
+    candidate=$(code --locate-extension "$extension_name" 2>/dev/null) || candidate=
+    if [[ "$candidate" == /* && -f "$candidate/package.json" ]]; then
+        printf '%s\n' "$candidate"
+        return
+    fi
+    for root in "$HOME/.vscode-oss/extensions" "$HOME/.vscode/extensions"; do
+        [[ -d "$root" ]] || continue
+        candidate=$(find "$root" -maxdepth 1 -type d -name "$extension_name-*" -print -quit)
+        if [[ -n "$candidate" && -f "$candidate/package.json" ]]; then
+            printf '%s\n' "$candidate"
+            return
         fi
     done
+    return 1
 }
 
-modify_extension_manifest() {
-    omarchy_entry=$(cat $install_path/package.json | jq 'first(.contributes.themes[] | select(.label == "Omarchy"))')
-    if [[ -z "$omarchy_entry" ]]; then
-        omarchy_entry='{"label": "Omarchy", "uiTheme": "vs-dark", "path": "./themes/base16/omarchy.json"}'
-        new_manifest=$(cat "${install_path}/package.json" | jq --argjson theme "$omarchy_entry" '.contributes.themes += [$theme]')
-        echo "$new_manifest" > "${install_path}/package.json"
-    fi
-}
+if ! install_path=$(find_extension_dir); then
+    code --install-extension "$extension_name" || error "Could not install the VS Code theme extension"
+    install_path=$(find_extension_dir) || error "VS Code theme extension directory not found"
+fi
 
-install_extension
-find_extension_dir
-modify_extension_manifest
-
+manifest="$install_path/package.json"
 install_location="$install_path/themes/base16/omarchy.json"
-cp "$output_file" "$install_location"
+entry='{"label": "Omarchy", "uiTheme": "vs-dark", "path": "./themes/base16/omarchy.json"}'
+temporary=$(mktemp "$install_path/.omarchy-package.XXXXXX") || error "Could not stage VS Code extension manifest"
+trap 'rm -f -- "$temporary"' EXIT
+jq -e --argjson theme "$entry" '
+    .contributes.themes |= (if any(.[]; .label == $theme.label) then . else . + [$theme] end)
+' "$manifest" > "$temporary" || error "Could not update VS Code extension manifest"
+
+cp -- "$output_file" "$install_location" || error "Could not write VS Code theme"
+if ! cmp -s "$temporary" "$manifest"; then
+    chmod --reference="$manifest" "$temporary" &&
+        mv -f -- "$temporary" "$manifest" || error "Could not replace VS Code extension manifest"
+fi
 
 require_restart "code"
 success "VS Code theme updated!"
-exit 0

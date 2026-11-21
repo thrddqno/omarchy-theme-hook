@@ -94,8 +94,11 @@ def quit_app(pids):
     for window in windows:
         address = window.get("address", "")
         if window.get("pid") in pids and re.fullmatch(r"0x[0-9a-fA-F]+", address):
-            subprocess.run(["hyprctl", "dispatch", "sendshortcut", f"CTRL,Q,address:{address}"],
-                           check=True, timeout=5)
+            shortcut = (
+                'hl.dsp.send_shortcut({mods = "CTRL", key = "Q", '
+                f'window = "address:{address}"}})'
+            )
+            subprocess.run(["hyprctl", "dispatch", shortcut], check=True, timeout=5)
             for _ in range(40):
                 if not app_pids():
                     return

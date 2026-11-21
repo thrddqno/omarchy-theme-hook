@@ -2,68 +2,160 @@
 
 source "$HOME/.config/omarchy/hooks/theme-set-lib.sh" || exit 1
 
-output_file="$HOME/.config/omarchy/current/theme/zen.css"
+set -e
 
-# Detect available Zen launcher command across variants
-zen_cmd=""
-for _c in zen-browser zen zen-bin zen-twilight zen-beta; do
-    if command -v "$_c" >/dev/null 2>&1; then
-        zen_cmd="$_c"
+zen_names=(zen-browser zen zen-bin zen-twilight zen-beta)
+zen_installed=false
+for name in "${zen_names[@]}"; do
+    if command -v "$name" >/dev/null 2>&1; then
+        zen_installed=true
         break
     fi
 done
+"$zen_installed" || skipped "Zen Browser"
+command -v python3 >/dev/null 2>&1 || skipped "Python 3 for Zen profile detection"
 
-if [[ -z "$zen_cmd" ]]; then
-    skipped "Zen Browser"
+resolve_profile() {
+    python3 - "${zen_names[@]}" <<'PYTHON'
+import configparser
+import os
+from pathlib import Path
+import sys
+
+home = Path.home()
+config = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
+uid = os.getuid()
+
+
+def select_profile():
+    profiles, defaults, installs = set(), set(), set()
+    for root in {home / ".zen", config / "zen"}:
+        root = root.resolve()
+        ini = root / "profiles.ini"
+        if not ini.exists():
+            continue
+        settings = configparser.ConfigParser(interpolation=None)
+        settings.read_string(ini.read_text())
+        registered = {}
+        for section in settings.sections():
+            if not section.startswith("Profile"):
+                continue
+            entry = settings[section]
+            raw = Path(entry["Path"])
+            relative = entry["IsRelative"]
+            if relative not in ("0", "1") or raw.is_absolute() == (relative == "1"):
+                raise ValueError("invalid registered profile path")
+            path = (root / raw).resolve()
+            if (relative == "1" and root not in path.parents) or path == root:
+                raise ValueError("profile path escapes its profile root")
+            if path.is_dir() and path.stat().st_uid == uid:
+                registered[entry["Path"]] = path
+                if entry.get("Default") == "1":
+                    defaults.add(path)
+            elif entry.get("Default") == "1":
+                raise ValueError("marked default profile is missing or inaccessible")
+        profiles.update(registered.values())
+        install_entries = [settings[name] for name in settings.sections()
+                           if name.startswith("Install")]
+        if not install_entries and (root / "installs.ini").exists():
+            fallback = configparser.ConfigParser(interpolation=None)
+            fallback.read_string((root / "installs.ini").read_text())
+            install_entries = [fallback[name] for name in fallback.sections()]
+        for entry in install_entries:
+            target = registered.get(entry.get("Default"))
+            if target is None:
+                raise ValueError("install default is missing or inaccessible")
+            installs.add(target)
+
+    active = set()
+    running_name = ""
+    for process in Path("/proc").iterdir():
+        if not process.name.isdecimal():
+            continue
+        try:
+            if process.stat().st_uid != uid:
+                continue
+            name = (process / "comm").read_text().rstrip("\n")
+            if name not in sys.argv[1:]:
+                continue
+            args = (process / "cmdline").read_bytes().split(b"\0")
+            if b"-contentproc" in args:
+                continue
+            locks = set()
+            for fd in (process / "fd").iterdir():
+                try:
+                    target = fd.readlink()
+                except FileNotFoundError:
+                    continue
+                if target.name == ".parentlock" and target.is_absolute():
+                    locks.add(target.parent.resolve())
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        if len(locks) != 1 or not locks <= profiles:
+            raise ValueError("a running Zen instance has no identifiable registered profile")
+        active.update(locks)
+        running_name = name
+
+    candidates = active or installs or defaults or profiles
+    if len(candidates) != 1:
+        raise ValueError("no unique Zen profile could be identified")
+    profile = str(candidates.pop())
+    if "\n" in profile or "\r" in profile:
+        raise ValueError("invalid line break in profile path")
+    print(running_name)
+    print(profile)
+
+
+try:
+    select_profile()
+except (OSError, ValueError, KeyError, configparser.Error) as error:
+    sys.exit(str(error))
+PYTHON
+}
+
+if ! selection=$(resolve_profile 2>&1); then
+    warning "Zen Browser skipped: $selection"
+    exit 0
 fi
+zen_proc=${selection%%$'\n'*}
+default_profile=${selection#*$'\n'}
+chrome="$default_profile/chrome"
 
-# Detect the actual process name (e.g., zen-bin)
-zen_proc=""
-for _p in zen-bin zen zen-twilight zen-beta zen-browser; do
-    if pgrep -x "$_p" >/dev/null 2>&1; then
-        zen_proc="$_p"
-        break
+if [[ -L $chrome || ( -e $chrome && ! -d $chrome ) ]]; then
+    error "Zen Browser chrome path is not a regular directory"
+fi
+for name in colors.css userChrome.css userContent.css; do
+    target="$chrome/$name"
+    if [[ -L $target || ( -e $target && ! -f $target ) ]]; then
+        error "Zen Browser CSS target is not a regular file: $name"
     fi
 done
-[[ -z "$zen_proc" ]] && zen_proc="$zen_cmd"
+mkdir -p -- "$chrome"
 
-# fallback in case colors aren't in the environment
-if [[ -z "$primary_background" ]]; then
-    _colors_file="$HOME/.config/omarchy/current/theme/colors.toml"
-    _ec() { awk -v c="$1" '$1==c&&/=/{if(match($0,/#([0-9a-fA-F]{6})/)){print substr($0,RSTART+1,6);exit}}' "$_colors_file"; }
-    primary_background=$(_ec "background"); primary_foreground=$(_ec "foreground")
-    normal_white=$(_ec "color7");   bright_white=$(_ec "color15")
-    normal_red=$(_ec "color1");     normal_yellow=$(_ec "color3");  bright_yellow=$(_ec "color11")
-    normal_green=$(_ec "color2");   normal_cyan=$(_ec "color6")
-    normal_blue=$(_ec "color4");    normal_magenta=$(_ec "color5"); bright_red=$(_ec "color9")
-fi
-
-find_default_profile() {
-    awk -F= '
-        /^\[Install/ { in_install=1 }
-        in_install && /^Default=/ { print $2; exit }
-    ' "$HOME/.zen/profiles.ini"
-}
-default_profile="$HOME/.zen/$(find_default_profile)"
-
-echo $default_profile
-
-enable_userchrome() {
-    local prefs_file="$default_profile/prefs.js"
-    local pref_name="toolkit.legacyUserProfileCustomizations.stylesheets"
-    if grep -q "user_pref(\"$pref_name\"" "$prefs_file"; then
-        if grep -q "user_pref(\"$pref_name\", false)" "$prefs_file"; then
-            sed -i.bak "s/user_pref(\"$pref_name\", false);/user_pref(\"$pref_name\", true);/" "$prefs_file"
-        fi
-    else
-        echo "user_pref(\"$pref_name\", true);" >> "$prefs_file"
+changed=false
+write_css() {
+    local target=$1 temporary
+    temporary=$(mktemp "$chrome/.omarchy-zen.XXXXXX")
+    if ! cat > "$temporary"; then
+        rm -- "$temporary"
+        error "Could not write Zen Browser CSS"
     fi
+    if cmp -s -- "$temporary" "$target"; then
+        rm -- "$temporary"
+        return
+    fi
+    if [[ -f $target ]] && ! chmod --reference="$target" "$temporary"; then
+        rm -- "$temporary"
+        error "Could not preserve Zen Browser CSS permissions"
+    fi
+    if ! mv -fT -- "$temporary" "$target"; then
+        rm -- "$temporary"
+        error "Could not install Zen Browser CSS"
+    fi
+    changed=true
 }
-enable_userchrome
 
-mkdir -p "$default_profile/chrome"
-
-cat > "$output_file" << EOF
+write_css "$chrome/colors.css" << EOF
 :root {
 --color00: #${primary_background};
 --color01: #${primary_background};
@@ -83,10 +175,9 @@ cat > "$output_file" << EOF
 --color0F: #${bright_red};
 }
 EOF
-cp "$output_file" "$default_profile/chrome/colors.css"
 
 if [[ ! -f "$default_profile/chrome/userChrome.css" ]]; then
-cat > "$default_profile/chrome/userChrome.css" << EOF
+write_css "$chrome/userChrome.css" << EOF
 @import url("./colors.css");
 
 :root {
@@ -268,7 +359,7 @@ EOF
 fi
 
 if [[ ! -f "$default_profile/chrome/userContent.css" ]]; then
-cat > "$default_profile/chrome/userContent.css" <<EOF
+write_css "$chrome/userContent.css" <<EOF
 @import url("./colors.css");
 
 :root {
@@ -331,16 +422,11 @@ body {
 EOF
 fi
 
-if pgrep -x "$zen_proc" > /dev/null; then
-    pkill -x "$zen_proc" > /dev/null
-    sleep 2
-    if pgrep -x "$zen_proc" > /dev/null; then
-        pkill -9 -x "$zen_proc" > /dev/null
-        sleep 1
+if "$changed"; then
+    if [[ -n $zen_proc ]]; then
+        require_restart "$zen_proc"
     fi
-    "$zen_cmd" > /dev/null &
+    success "Zen Browser theme updated!"
+else
+    unchanged "Zen Browser theme already in sync"
 fi
-
-require_restart "$zen_proc"
-success "Zen Browser theme updated!"
-exit 0

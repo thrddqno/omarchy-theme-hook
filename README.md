@@ -71,7 +71,7 @@ If an app’s colors don’t update, check that its hook is enabled and run `~/.
 
 - **ChatGPT Desktop** requires Python 3.11 or newer and the `chatgpt` desktop command. The hook updates the matching light or dark appearance and attempts a normal restart if the app is open.
 - **Discord** requires a client with custom theme support, such as Vesktop or Equibop. Run the hooks, then enable the **Match System** theme in the client.
-- **Firefox and Zen** may need legacy stylesheets enabled. Open `about:config`, set `toolkit.legacyUserProfileCustomizations.stylesheets` to `true`, and restart the browser.
+- **Firefox and Zen** may need legacy stylesheets enabled. Open `about:config`, set `toolkit.legacyUserProfileCustomizations.stylesheets` to `true`, and restart the browser. The Zen hook uses Python 3 to identify the profile and asks for a manual restart when its styles change.
 - **Spotify** requires Spicetify. If Spotify updates and the theme stops applying, run `spicetify restore backup apply`. [Spicetify setup for Linux](https://spicetify.app/docs/advanced-usage/installation#note-for-linux-users)
 - **Missing `colors.toml`** means the active theme needs a compatible palette file. Update the theme or add a valid `colors.toml`, then reapply it.
 
